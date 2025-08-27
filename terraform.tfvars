@@ -39,8 +39,8 @@ services = {
     desired_count  = 1
   }
   "dash" = {
-    cpu            = "1024"
-    memory         = "4096"
+    cpu            = "4096"
+    memory         = "16384"
     container_name = "app"
     image          = "589736534170.dkr.ecr.ap-southeast-1.amazonaws.com/hamza/dash:v1"
     port           = 3000

@@ -1,3 +1,8 @@
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/${var.project}-${var.environment}"
+  retention_in_days = 7
+}
+
 # -----------------------
 # ECS Cluster
 # -----------------------
@@ -43,27 +48,36 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
 # -----------------------
 # ECS Task Definition
 # -----------------------
-resource "aws_ecs_task_definition" "demo_task" {
-  family                   = var.task_def
+resource "aws_ecs_task_definition" "tasks" {
+  for_each                 = var.services
+  family                   = each.key
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "4096"   # 4 vCPU
-  memory                   = "16384"  # 16 GB
+  cpu                      = each.value.cpu
+  memory                   = each.value.memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([{
-    name      = var.container_name
-    image     = var.image_name
+    name      = each.value.container_name
+    image     = each.value.image
     essential = true
     portMappings = [{
-      containerPort = var.container_port
-      hostPort      = var.container_port
+      containerPort = each.value.port
+      hostPort      = each.value.port
       protocol      = "tcp"
     }]
+    logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_logs.name
+          awslogs-region        = var.region
+          awslogs-stream-prefix = each.value.container_name
+        }
+      }
   }])
 
   tags = {
-    Name        = var.task_def
+    Name        = each.key
     Environment = var.environment
     Project     = var.project
   }
@@ -112,11 +126,12 @@ resource "aws_security_group" "ecs_sg" {
 # -----------------------
 # ECS Service using Fargate Spot
 # -----------------------
-resource "aws_ecs_service" "demo_service" {
-  name            = var.service_name
+resource "aws_ecs_service" "services" {
+  for_each        = var.services
+  name            = each.key
   cluster         = aws_ecs_cluster.fargate_cluster.id
-  task_definition = aws_ecs_task_definition.demo_task.arn
-  desired_count   = 1
+  task_definition = aws_ecs_task_definition.tasks[each.key].arn
+  desired_count   = each.value.desired_count
   # launch_type     = "FARGATE"
 
   capacity_provider_strategy {
@@ -131,13 +146,13 @@ resource "aws_ecs_service" "demo_service" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.tg_service1.arn
-    container_name   = var.container_name
-    container_port   = var.container_port
+    target_group_arn = aws_lb_target_group.tg[each.key].arn
+    container_name   = each.value.container_name
+    container_port   = each.value.port
   }
 
   tags = {
-    Name        = var.service_name
+    Name        = each.key
     Environment = var.environment
     Project     = var.project
   }

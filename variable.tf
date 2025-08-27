@@ -1,44 +1,39 @@
 provider "aws" {
-  region  = "ap-southeast-1"
+  region  = var.region
   profile = "pfs"
 }
 
-variable "environment" {
-  default = "demo"
+variable "region" {}
+
+variable "environment" {}
+
+variable "project" {}
+
+variable "security_group_demo" {}
+
+variable "service_name" {}
+
+variable "container_name" {}
+
+variable "container_port" {}
+
+variable "public_ip" {}
+
+variable "task_def"{}
+
+variable "image_name"{}
+
+variable "cluster_name" {}
+
+variable "services" {
+  type = map(object({
+    cpu             = string
+    memory          = string
+    container_name  = string
+    image           = string
+    port            = number
+    path            = string
+    desired_count   = number
+  }))
 }
 
-variable "project" {
-  default = "ecs-fargate-demo"
-}
-
-variable "security_group_demo" {
-  default = "ecs-fargate-sg"
-}
-
-variable "service_name" {
-  default = "demo-service"
-}
-
-variable "container_name" {
-  default = "demo-app"
-}
-
-variable "container_port" {
-  default = 80
-}
-
-variable "public_ip" {
-  default = true
-}
-
-variable "task_def"{
-  default = "demo-task"
-}
-
-variable "image_name"{
-  default = "589736534170.dkr.ecr.ap-southeast-1.amazonaws.com/hamza/test:latest"
-}
-
-variable "cluster_name" {
-  default = "demo-fargate-cluster"
-}

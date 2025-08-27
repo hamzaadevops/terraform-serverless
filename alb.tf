@@ -18,23 +18,10 @@ resource "aws_lb" "ecs_alb" {
 # -----------------------
 # Target Group
 # -----------------------
-resource "aws_lb_target_group" "tg_service1" {
-  name        = "tg-service1"
-  port        = 80
-  protocol    = "HTTP"
-  vpc_id      = data.aws_vpc.default.id
-  target_type = "ip"
-  
-  tags = {
-    Name        = "ecs-demo-tg"
-    Environment = var.environment
-    Project     = var.project
-  }
-}
-
-resource "aws_lb_target_group" "tg_service2" {
-  name        = "tg-service2"
-  port        = 80
+resource "aws_lb_target_group" "tg" {
+  for_each    = var.services
+  name        = "tg-${each.key}"
+  port        = each.value.port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.default.id
   target_type = "ip"
@@ -73,43 +60,29 @@ resource "aws_lb_listener" "ecs_listener" {
 # -----------------------
 # Listener Rules
 # -----------------------
-resource "aws_lb_listener_rule" "service1_rule" {
-  listener_arn = aws_lb_listener.ecs_listener.arn
-  priority     = 10
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.tg_service1.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/service1/*"]
-    }
-  }
-  tags = {
-    Name        = "ecs-demo-listener-rule1"
-    Environment = var.environment
-    Project     = var.project
-  }
+locals {
+  service_list = keys(var.services)
 }
 
-resource "aws_lb_listener_rule" "service2_rule" {
+resource "aws_lb_listener_rule" "rules" {
+  for_each     = var.services
   listener_arn = aws_lb_listener.ecs_listener.arn
-  priority     = 20
+
+  # Generate stable priorities: 100, 101, 102, ...
+  priority     = 100 + index(local.service_list, each.key)
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.tg_service2.arn
+    target_group_arn = aws_lb_target_group.tg[each.key].arn
   }
 
   condition {
     path_pattern {
-      values = ["/service2/*"]
+      values = [each.value.path]
     }
   }
   tags = {
-    Name        = "ecs-demo-listener-rule2"
+    Name        = "ecs-demo-listener-rules"
     Environment = var.environment
     Project     = var.project
   }

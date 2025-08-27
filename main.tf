@@ -70,11 +70,48 @@ resource "aws_ecs_task_definition" "tasks" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.ecs_logs.name
-          awslogs-region        = var.region
+          awslogs-region        = var.aws_region
           awslogs-stream-prefix = each.value.container_name
         }
       }
-  }])
+    },
+    {
+      name      = "${each.value.container_name}-proxy"
+      image     = "nginx:alpine"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort      = 80
+          protocol      = "tcp"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/${var.project}-${var.environment}"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = each.key
+        }
+      }
+      command = [
+        "/bin/sh", "-c",
+        <<EOT
+        cat <<EOF > /etc/nginx/conf.d/default.conf
+        server {
+          listen 80;
+          location ${each.value.path} {
+            rewrite ^${each.value.path}(/.*)$ $1 break;
+            proxy_pass http://127.0.0.1:${each.value.port};
+          }
+        }
+        EOF
+        nginx -g "daemon off;"
+        EOT
+      ]
+    }
+  ])
 
   tags = {
     Name        = each.key

@@ -1,9 +1,9 @@
 provider "aws" {
-  region  = var.region
+  region  = var.aws_region
   profile = "pfs"
 }
 
-variable "region" {}
+variable "aws_region" {}
 
 variable "environment" {}
 

@@ -24,6 +24,20 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    self            = true
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -38,3 +52,36 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
+# -----------------------
+# VPC Endpoints for ECR
+# -----------------------
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id             = data.aws_vpc.default.id
+  service_name       = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = data.aws_subnets.default.ids
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.project}-ecr-api-endpoint"
+    Environment = var.environment
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id             = data.aws_vpc.default.id
+  service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = data.aws_subnets.default.ids
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.project}-ecr-dkr-endpoint"
+    Environment = var.environment
+  }
+}

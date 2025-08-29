@@ -25,6 +25,10 @@ variable "image_name"{}
 
 variable "cluster_name" {}
 
+variable "route53_zone_id" {}
+
+variable "domain_name" {}
+
 variable "services" {
   type = map(object({
     cpu             = string
@@ -33,6 +37,7 @@ variable "services" {
     image           = string
     port            = number
     path            = string
+    domain          = string
     desired_count   = number
   }))
 }
